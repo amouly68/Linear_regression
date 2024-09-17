@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.preprocessing import MinMaxScaler
+import threading
 
 def load_scaler(file="scalers.npy"):
     data = np.load(file)
@@ -96,8 +97,6 @@ def plot_graph(km, price, theta0, theta1):
     plt.ylabel("Prix (euros)")
     plt.title("Régression Linéaire : Prix vs Kilométrage ")
     plt.legend()
-
-    # Afficher le graphique
     plt.show()
 
 def main():

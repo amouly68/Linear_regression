@@ -25,6 +25,8 @@ def predict_price(km, theta0, theta1):
 
     if isinstance(price_denormalized, np.ndarray):
         price_denormalized = price_denormalized.item()
+    if price_denormalized < 0:
+        price_denormalized = 0
     
     return price_denormalized
 
