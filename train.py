@@ -2,7 +2,8 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.preprocessing import MinMaxScaler
-import threading
+from matplotlib.animation import FuncAnimation
+
 
 def load_scaler(file="scalers.npy"):
     data = np.load(file)
@@ -14,63 +15,56 @@ def save_scalers(scaler_km, scaler_price, filename="scalers.npy"):
     np.save(filename, np.array([scaler_km.data_min_, scaler_km.data_max_, 
                                 scaler_price.data_min_, scaler_price.data_max_]))
 
-def load_data(filename):
-    data = pd.read_csv("data.csv")
+
+def normalise_data(data):
     scaler_km = MinMaxScaler()
     scaler_price = MinMaxScaler()
 
-    # Normaliser les colonnes 'mileage' et 'price'
     data[['km']] = scaler_km.fit_transform(data[['km']])
     data[['price']] = scaler_price.fit_transform(data[['price']])
 
     save_scalers(scaler_km, scaler_price)
     
-    # scaler = MinMaxScaler()
-    # data[['km', 'price']] = scaler.fit_transform(data[['km', 'price']])
     return data['km'].values, data['price'].values
 
-def train_model(km, price, learning_rate, num_iterations):
+
+def train_model_with_tracking(km, price, learning_rate, num_iterations):
     """
     Train the model by adjusting theta0 and theta1 using gradient descent.
+    Track theta0 and theta1 at each iteration.
     """
-    m = len(km)  # Number of training examples
-    print (f"length of list of training examples: {m}")
+    m = len(km)
     theta0 = 0
     theta1 = 0
+    
+    # Lists to store the evolution of theta0 and theta1
+    theta0_history = []
+    theta1_history = []
     
     for _ in range(num_iterations):
         estimate = theta0 + theta1 * km
         error = estimate - price
         
-        # Calculate the new values for theta0 and theta1
         tmp_theta0 = theta0 - (learning_rate * np.sum(error) / m)
         tmp_theta1 = theta1 - (learning_rate * np.sum(error * km) / m)
 
         theta0 = tmp_theta0
         theta1 = tmp_theta1
-    
-    return theta0, theta1
+
+        # Save the history of thetas for visualization
+        theta0_history.append(theta0)
+        theta1_history.append(theta1)
+
+    return theta0, theta1, theta0_history, theta1_history
+
 
 def save_model(theta0, theta1, filename="model.npy"):
-    np.save(filename, np.array([theta0, theta1]))
 
-# def plot_graph(km, price, theta0, theta1):
-#     """
-#     Display the scatter plot of data and the linear regression line.
-#     """
-    
-#     plt.scatter(km, price, color='blue', label='Real Data')
-#     estimate = theta0 + theta1 * km
-#     plt.plot(km, estimate, color='red', label='Linear Regression')
-#     plt.xlabel("km")
-#     plt.ylabel("Price")
-#     plt.title("Linear Regression: Price vs km")
-#     plt.legend()
-#     plt.show()
+    print(f"Trained model: theta0 = {theta0:.4f}, theta1 = {theta1:.4f}")
+    np.save(filename, np.array([theta0, theta1]))
 
 
 def plot_graph(km, price, theta0, theta1):
-
     km_min, km_max, price_min, price_max = load_scaler()
 
     km_denorm = km * (km_max - km_min) + km_min
@@ -78,10 +72,6 @@ def plot_graph(km, price, theta0, theta1):
 
     # Afficher le nuage de points des données réelles dénormalisées
     plt.scatter(km_denorm, price_denorm, color='blue', label='Data')
-
-    # predicted_price_norm = theta0 + theta1 * km_denorm
-    # predicted_price_denorm = predicted_price_norm * (price_max - price_min) + price_min
-    # plt.plot(km_denorm, predicted_price_denorm, color='red', label='Régression linéaire')
 
     # Calculer et afficher la ligne de régression dénormalisée
     km_range = np.linspace(min(km), max(km), 100)
@@ -91,35 +81,192 @@ def plot_graph(km, price, theta0, theta1):
 
     plt.plot(km_range_denorm, predicted_price_denorm, color='red', label='Régression linéaire')
 
-
     # Ajouter les labels et la légende
     plt.xlabel("Kilométrage (km)")
     plt.ylabel("Prix (euros)")
-    plt.title("Régression Linéaire : Prix vs Kilométrage ")
+    plt.title("Régression Linéaire : Prix vs Kilométrage")
     plt.legend()
     plt.show()
 
+
+def plot_regression_evolution(km, price, theta0_history, theta1_history, num_steps=100):
+    """
+    Affiche l'évolution des lignes de régression pendant l'entraînement.
+    """
+    km_min, km_max, price_min, price_max = load_scaler()
+    km_denorm = km * (km_max - km_min) + km_min
+    price_denorm = price * (price_max - price_min) + price_min
+
+    plt.scatter(km_denorm, price_denorm, color='blue', label='Data')
+
+    for i in range(0, len(theta0_history), num_steps):
+        theta0 = theta0_history[i]
+        theta1 = theta1_history[i]
+        price_predicted = theta0 + theta1 * km
+        price_predicted_denorm = price_predicted * (price_max - price_min) + price_min
+        plt.plot(km_denorm, price_predicted_denorm, label=f'Iteration {i}')
+    
+    plt.xlabel("Kilométrage (km)")
+    plt.ylabel("Prix (euros)")
+    plt.title("Evolution of Linear Regression Lines")
+    plt.legend()
+    plt.show()
+
+
+def animate_regression_evolution(km, price, theta0_history, theta1_history, num_steps=100, interval=1500):
+    """
+    Crée une animation pour afficher l'évolution des lignes de régression pendant l'entraînement.
+    Affiche une ligne toutes les `num_steps` itérations, avec un délai de 1,5 seconde entre chaque.
+    """
+    # Récupérer les scalers pour dénormaliser les données
+    km_min, km_max, price_min, price_max = load_scaler()
+
+    # Dénormaliser les données
+    km_denorm = km * (km_max - km_min) + km_min
+    price_denorm = price * (price_max - price_min) + price_min
+
+    fig, ax = plt.subplots()
+
+    # Afficher les données réelles
+    ax.scatter(km_denorm, price_denorm, color='blue', label='Data')
+
+    # Définir les limites de l'axe
+    ax.set_xlim([0, km_denorm.max() * 1.1])
+    ax.set_ylim([3000, price_denorm.max() * 1.1])
+
+    # Initialiser la ligne de régression vide
+    line, = ax.plot([], [], color='red', label='Régression linéaire')
+
+    # Ajouter un texte pour afficher le nombre d'itérations
+    iteration_text = ax.text(0.60, 0.82, '', transform=ax.transAxes, fontsize=12, verticalalignment='top')
+    theta0_text = ax.text(0.50, 0.77, '', transform=ax.transAxes, fontsize=12, verticalalignment='top')
+    theta1_text = ax.text(0.50, 0.72, '', transform=ax.transAxes, fontsize=12, verticalalignment='top')
+
+    def init():
+        """ Initialiser la ligne de régression vide. """
+        line.set_data([], [])
+        iteration_text.set_text('')
+        return line, iteration_text
+
+    def update(i):
+        """ Mettre à jour la ligne de régression toutes les `num_steps` itérations. """
+        idx = i * num_steps
+        if idx >= len(theta0_history):
+            idx = len(theta0_history) - 1  # S'assurer de ne pas dépasser la dernière itération
+
+        theta0 = theta0_history[idx]
+        theta1 = theta1_history[idx]
+        
+        # Calculer les prix prédits à partir des paramètres actuels
+        km_range = np.linspace(min(km), max(km), 100)
+        km_range_denorm = km_range * (km_max - km_min) + km_min
+        predicted_price_norm = theta0 + theta1 * km_range
+        predicted_price_denorm = predicted_price_norm * (price_max - price_min) + price_min
+
+        # Mettre à jour la ligne de régression et le texte de l'itération
+        line.set_data(km_range_denorm, predicted_price_denorm)
+        iteration_text.set_text(f'Itération : {idx}')
+        theta0_text.set_text(f'theta0 : {theta0:.12f}')
+        theta1_text.set_text(f'theta1 : {theta1:.12f}')
+        return line, iteration_text, theta1_text, theta0_text
+
+    # Créer l'animation, en affichant une ligne toutes les `interval` millisecondes
+    num_frames = len(theta0_history) // num_steps + 1 # Nombre de frames basées sur les pas choisis
+    ani = FuncAnimation(fig, update, frames=num_frames, init_func=init,
+                        blit=True, interval=interval, repeat=False)
+
+    # Afficher l'animation
+    plt.xlabel("Kilométrage (km)")
+    plt.ylabel("Prix (euros)")
+    plt.title("Evolution de la Régression Linéaire")
+    plt.legend()
+    plt.show()
+
+
+def evaluate_error(true_price, km, theta0, theta1):
+    estimate = theta0 + theta1 * km
+    estimate_denorm = estimate * (true_price.max() - true_price.min()) + true_price.min()
+    error = estimate_denorm - true_price
+
+    mse = np.mean(error ** 2)
+    print(f"Mean Squared Error (MSE) : {mse:.4f}")
+
+    rmse = np.sqrt(mse)
+    print(f"Root Mean Squared Error (RMSE) : {rmse:.4f}")
+
+    mae = np.mean(np.abs(error))
+    print(f"Mean Absolute Error (MAE) : {mae:.4f}")
+
+    ss_residual = np.sum(error ** 2)
+    ss_total = np.sum((true_price - np.mean(true_price)) ** 2)
+    r_squared = 1 - (ss_residual / ss_total)
+    print(f"R-squared : {r_squared:.4f}")
+
+
+def fine_tune_hyperparameters(km, price, learning_rates, iterations_list):
+    """
+    Teste différentes combinaisons de learning_rate et num_iterations pour trouver la meilleure.
+    """
+    best_mse = float('inf')
+    best_theta0 = None
+    best_theta1 = None
+    best_params = None
+
+    for learning_rate in learning_rates:
+        for num_iterations in iterations_list:
+            theta0, theta1, _, _ = train_model_with_tracking(km, price, learning_rate, num_iterations)
+            
+            # Calculer l'erreur MSE avec les valeurs actuelles de theta0 et theta1
+            estimate = theta0 + theta1 * km
+            mse = np.mean((estimate - price) ** 2)
+            
+            # Si l'erreur est meilleure, sauvegarder ces paramètres
+            if mse < best_mse:
+                best_mse = mse
+                best_theta0 = theta0
+                best_theta1 = theta1
+                best_params = (learning_rate, num_iterations)
+    
+    print(f"Best learning_rate: {best_params[0]}, Best num_iterations: {best_params[1]}")
+    print(f"Best theta0: {best_theta0}, Best theta1: {best_theta1}, Best MSE: {best_mse}")
+    return best_theta0, best_theta1, best_params
+
+
 def main():
-    # Load the data
-    km, price = load_data("data.csv")
     
-    # Set hyperparameters
-    learning_rate = 0.98
-    num_iterations = 100
+    data = pd.read_csv("data.csv")
+    true_price = data['price'].values
+    km, price = normalise_data(data)
     
-    # Train the model
-    theta0, theta1 = train_model(km, price, learning_rate, num_iterations)
-    
-    # Save the model
+    # Fine-tuning hyperparameters
+    learning_rates = [0.001, 0.01, 0.1, 0.3]
+    iterations_list = [500, 1000, 2000]
+    theta0, theta1, best_params = fine_tune_hyperparameters(km, price, learning_rates, iterations_list)
     save_model(theta0, theta1)
+
+    evaluate_error(true_price, km, theta0, theta1)
     
-    # Display the results
-    print(f"Trained model: theta0 = {theta0:.4f}, theta1 = {theta1:.4f}")
+    # plot_graph(km, price, theta0, theta1)
+
+    learning_rate = 0.3
+    num_iterations = 200
     
-    # Plot the graph
-    plot_graph(km, price, theta0, theta1)
+    # Train and visualize the evolution of thetas and regression lines
+    # _, _, theta0_history, theta1_history = train_model_with_tracking(km, price, best_params[0], best_params[1])
+    _, _, theta0_history, theta1_history = train_model_with_tracking(km, price, learning_rate, num_iterations)
+    
+    
+    # plot_regression_evolution(km, price, theta0_history, theta1_history, num_steps=100)
+
+    # Animate the evolution of thetas and regression lines
+    animate_regression_evolution(km, price, theta0_history, theta1_history)
 
 if __name__ == "__main__":
     main()
 
-    
+
+# faire en sorte aue theta0_history et theta1_history soient des listes de listes de 10 nombres seulement 
+# si 100 iteration prendre les thetat a iteration 10, 20 30 40 50 60 70 80 90 100
+# si 500 iteration prendre les thetat a iteration 50, 100, 150, 200, 250, 300, 350, 400, 450, 500
+# si 1000 iteration prendre les thetat a iteration 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000
+# etc...
