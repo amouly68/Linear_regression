@@ -29,10 +29,6 @@ def normalise_data(data):
 
 
 def train_model_with_tracking(km, price, learning_rate, num_iterations):
-    """
-    Train the model by adjusting theta0 and theta1 using gradient descent.
-    Track theta0 and theta1 at each iteration.
-    """
     m = len(km)
     theta0 = 0
     theta1 = 0
@@ -112,10 +108,6 @@ def plot_regression_evolution(km, price, theta0_history, theta1_history, num_ste
 
 
 def animate_regression_evolution(km, price, theta0_history, theta1_history, num_iterations, interval=1500):
-    """
-    Crée une animation pour afficher l'évolution des lignes de régression pendant l'entraînement.
-    Affiche une ligne toutes les `num_steps` itérations, avec un délai de 1,5 seconde entre chaque.
-    """
     km_min, km_max, price_min, price_max = load_scaler()
 
     km_denorm = km * (km_max - km_min) + km_min
@@ -135,13 +127,11 @@ def animate_regression_evolution(km, price, theta0_history, theta1_history, num_
     theta1_text = ax.text(0.50, 0.72, '', transform=ax.transAxes, fontsize=12, verticalalignment='top')
 
     def init():
-        """ Initialiser la ligne de régression vide. """
         line.set_data([], [])
         iteration_text.set_text('')
         return line, iteration_text
 
     def update(i):
-        """ Mettre à jour la ligne de régression toutes les `num_steps` itérations. """
         theta0 = theta0_history[i]
         theta1 = theta1_history[i]
         
@@ -188,9 +178,6 @@ def evaluate_error(true_price, km, theta0, theta1):
 
 
 def fine_tune_hyperparameters(km, price, learning_rates, iterations_list):
-    """
-    Teste différentes combinaisons de learning_rate et num_iterations pour trouver la meilleure.
-    """
     best_mse = float('inf')
     best_theta0 = None
     best_theta1 = None
@@ -200,11 +187,9 @@ def fine_tune_hyperparameters(km, price, learning_rates, iterations_list):
         for num_iterations in iterations_list:
             theta0, theta1, _, _ = train_model_with_tracking(km, price, learning_rate, num_iterations)
             
-            # Calculer l'erreur MSE avec les valeurs actuelles de theta0 et theta1
             estimate = theta0 + theta1 * km
             mse = np.mean((estimate - price) ** 2)
             
-            # Si l'erreur est meilleure, sauvegarder ces paramètres
             if mse < best_mse:
                 best_mse = mse
                 best_theta0 = theta0
@@ -222,15 +207,15 @@ def main():
     true_price = data['price'].values
     km, price = normalise_data(data)
     
-    learning_rates = [0.001, 0.01, 0.1, 0.3]
-    iterations_list = [500, 1000, 2000]
-    best_params = fine_tune_hyperparameters(km, price, learning_rates, iterations_list)
+    # learning_rates = [0.001, 0.01, 0.1, 0.3]
+    # iterations_list = [500, 1000, 2000]
+    # best_params = fine_tune_hyperparameters(km, price, learning_rates, iterations_list)
 
     learning_rate = 0.3
     num_iterations = 200
     
-    theta0, theta1, theta0_history, theta1_history = train_model_with_tracking(km, price, best_params[0], best_params[1])
-    # theta0, theta1, theta0_history, theta1_history = train_model_with_tracking(km, price, learning_rate, num_iterations)
+    # theta0, theta1, theta0_history, theta1_history = train_model_with_tracking(km, price, best_params[0], best_params[1])
+    theta0, theta1, theta0_history, theta1_history = train_model_with_tracking(km, price, learning_rate, num_iterations)
 
     save_model(theta0, theta1)
 
@@ -239,8 +224,8 @@ def main():
     # plot_regression_evolution(km, price, theta0_history, theta1_history, num_steps=100)
     # plot_graph(km, price, theta0, theta1)
 
-    animate_regression_evolution(km, price, theta0_history, theta1_history, best_params[1])
-    # animate_regression_evolution(km, price, theta0_history, theta1_history, num_iterations)
+    # animate_regression_evolution(km, price, theta0_history, theta1_history, best_params[1])
+    animate_regression_evolution(km, price, theta0_history, theta1_history, num_iterations)
     
 
 if __name__ == "__main__":

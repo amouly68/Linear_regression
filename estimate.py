@@ -9,9 +9,6 @@ def load_scaler(file="scalers.npy"):
     return km_min, km_max, price_min, price_max
 
 def predict_price(km, theta0, theta1):
-    """
-    Prédit le prix basé sur le kilométrage en utilisant le modèle de régression linéaire.
-    """
     
     km_min, km_max, price_min, price_max = load_scaler()
 
@@ -29,7 +26,7 @@ def predict_price(km, theta0, theta1):
 
 def main():
     theta0, theta1 = load_model()
-    print(f"Values for estimation: theta0 = {theta0:.4f}, theta1 = {theta1:.4f}")
+    print(f"Les valeurs pour l'estimation: theta0 = {theta0:.4f}, theta1 = {theta1:.4f}")
 
 
     try:
