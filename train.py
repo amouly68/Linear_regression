@@ -36,12 +36,14 @@ def train_model_with_tracking(km, price, learning_rate, num_iterations):
     m = len(km)
     theta0 = 0
     theta1 = 0
+
+    interval = max(num_iterations // 10, 1)
     
     # Lists to store the evolution of theta0 and theta1
     theta0_history = []
     theta1_history = []
     
-    for _ in range(num_iterations):
+    for i in range(1, num_iterations + 1):
         estimate = theta0 + theta1 * km
         error = estimate - price
         
@@ -51,9 +53,12 @@ def train_model_with_tracking(km, price, learning_rate, num_iterations):
         theta0 = tmp_theta0
         theta1 = tmp_theta1
 
-        # Save the history of thetas for visualization
-        theta0_history.append(theta0)
-        theta1_history.append(theta1)
+        if i % interval == 0:
+            theta0_history.append(theta0)
+            theta1_history.append(theta1)
+
+    theta0_history.append(theta0)
+    theta1_history.append(theta1)    
 
     return theta0, theta1, theta0_history, theta1_history
 
@@ -113,7 +118,7 @@ def plot_regression_evolution(km, price, theta0_history, theta1_history, num_ste
     plt.show()
 
 
-def animate_regression_evolution(km, price, theta0_history, theta1_history, num_steps=100, interval=1500):
+def animate_regression_evolution(km, price, theta0_history, theta1_history, num_iterations, interval=1500):
     """
     Crée une animation pour afficher l'évolution des lignes de régression pendant l'entraînement.
     Affiche une ligne toutes les `num_steps` itérations, avec un délai de 1,5 seconde entre chaque.
@@ -150,12 +155,8 @@ def animate_regression_evolution(km, price, theta0_history, theta1_history, num_
 
     def update(i):
         """ Mettre à jour la ligne de régression toutes les `num_steps` itérations. """
-        idx = i * num_steps
-        if idx >= len(theta0_history):
-            idx = len(theta0_history) - 1  # S'assurer de ne pas dépasser la dernière itération
-
-        theta0 = theta0_history[idx]
-        theta1 = theta1_history[idx]
+        theta0 = theta0_history[i]
+        theta1 = theta1_history[i]
         
         # Calculer les prix prédits à partir des paramètres actuels
         km_range = np.linspace(min(km), max(km), 100)
@@ -165,14 +166,14 @@ def animate_regression_evolution(km, price, theta0_history, theta1_history, num_
 
         # Mettre à jour la ligne de régression et le texte de l'itération
         line.set_data(km_range_denorm, predicted_price_denorm)
-        iteration_text.set_text(f'Itération : {idx}')
+        iter = i / 10 * num_iterations
+        iteration_text.set_text(f'Itération : {iter:.0f}')
         theta0_text.set_text(f'theta0 : {theta0:.12f}')
         theta1_text.set_text(f'theta1 : {theta1:.12f}')
         return line, iteration_text, theta1_text, theta0_text
 
     # Créer l'animation, en affichant une ligne toutes les `interval` millisecondes
-    num_frames = len(theta0_history) // num_steps + 1 # Nombre de frames basées sur les pas choisis
-    ani = FuncAnimation(fig, update, frames=num_frames, init_func=init,
+    ani = FuncAnimation(fig, update, frames=len(theta0_history), init_func=init,
                         blit=True, interval=interval, repeat=False)
 
     # Afficher l'animation
@@ -229,7 +230,7 @@ def fine_tune_hyperparameters(km, price, learning_rates, iterations_list):
     
     print(f"Best learning_rate: {best_params[0]}, Best num_iterations: {best_params[1]}")
     print(f"Best theta0: {best_theta0}, Best theta1: {best_theta1}, Best MSE: {best_mse}")
-    return best_theta0, best_theta1, best_params
+    return best_params
 
 
 def main():
@@ -241,10 +242,8 @@ def main():
     # Fine-tuning hyperparameters
     learning_rates = [0.001, 0.01, 0.1, 0.3]
     iterations_list = [500, 1000, 2000]
-    theta0, theta1, best_params = fine_tune_hyperparameters(km, price, learning_rates, iterations_list)
-    save_model(theta0, theta1)
-
-    evaluate_error(true_price, km, theta0, theta1)
+    best_params = fine_tune_hyperparameters(km, price, learning_rates, iterations_list)
+    
     
     # plot_graph(km, price, theta0, theta1)
 
@@ -252,21 +251,19 @@ def main():
     num_iterations = 200
     
     # Train and visualize the evolution of thetas and regression lines
-    # _, _, theta0_history, theta1_history = train_model_with_tracking(km, price, best_params[0], best_params[1])
-    _, _, theta0_history, theta1_history = train_model_with_tracking(km, price, learning_rate, num_iterations)
-    
+    theta0, theta1, theta0_history, theta1_history = train_model_with_tracking(km, price, best_params[0], best_params[1])
+    # theta0, theta1, theta0_history, theta1_history = train_model_with_tracking(km, price, learning_rate, num_iterations)
+
+    save_model(theta0, theta1)
+
+    evaluate_error(true_price, km, theta0, theta1)
     
     # plot_regression_evolution(km, price, theta0_history, theta1_history, num_steps=100)
 
     # Animate the evolution of thetas and regression lines
-    animate_regression_evolution(km, price, theta0_history, theta1_history)
+    animate_regression_evolution(km, price, theta0_history, theta1_history, best_params[1])
+    # animate_regression_evolution(km, price, theta0_history, theta1_history, num_iterations)
+    
 
 if __name__ == "__main__":
     main()
-
-
-# faire en sorte aue theta0_history et theta1_history soient des listes de listes de 10 nombres seulement 
-# si 100 iteration prendre les thetat a iteration 10, 20 30 40 50 60 70 80 90 100
-# si 500 iteration prendre les thetat a iteration 50, 100, 150, 200, 250, 300, 350, 400, 450, 500
-# si 1000 iteration prendre les thetat a iteration 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000
-# etc...
