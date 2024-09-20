@@ -29,11 +29,20 @@ def predict_price(km, theta0, theta1):
 
 def main():
     theta0, theta1 = load_model()
-    
-    km = float(input("Entrez le kilométrage de la voiture : "))
-    
+    print(f"Values for estimation: theta0 = {theta0:.4f}, theta1 = {theta1:.4f}")
+
+
+    try:
+        km = float(input("Entrez le kilométrage de la voiture : "))
+        if km <= 0:
+            print("Le kilométrage doit être supérieur à 0.")
+            return 1
+        
+    except ValueError:
+        print("Entrée invalide. Veuillez entrer un nombre valide pour le kilométrage.")
+        return 1
+
     prix = predict_price(km, theta0, theta1)
-    
     print(f"Le prix estimé pour un kilométrage de {km} km est de {prix:.2f} euros.")
 
 if __name__ == "__main__":
