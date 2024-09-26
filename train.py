@@ -11,9 +11,9 @@ def load_scaler(file="scalers.npy"):
     return km_min, km_max, price_min, price_max
 
 
-def save_scalers(scaler_km, scaler_price, filename="scalers.npy"):
-    np.save(filename, np.array([scaler_km.data_min_, scaler_km.data_max_, 
-                                scaler_price.data_min_, scaler_price.data_max_]))
+# def save_scalers(scaler_km, scaler_price, filename="scalers.npy"):
+#     np.save(filename, np.array([scaler_km.data_min_, scaler_km.data_max_, 
+#                                 scaler_price.data_min_, scaler_price.data_max_]))
 
 
 def normalise_data(data):
@@ -23,7 +23,8 @@ def normalise_data(data):
     data[['km']] = scaler_km.fit_transform(data[['km']])
     data[['price']] = scaler_price.fit_transform(data[['price']])
 
-    save_scalers(scaler_km, scaler_price)
+    np.save("scalers.npy", np.array([scaler_km.data_min_, scaler_km.data_max_, 
+                                scaler_price.data_min_, scaler_price.data_max_]))
     
     return data['km'].values, data['price'].values
 
@@ -203,7 +204,11 @@ def fine_tune_hyperparameters(km, price, learning_rates, iterations_list):
 
 def main():
     
-    data = pd.read_csv("data.csv")
+    try:
+        data = pd.read_csv("data.csv")
+    except FileNotFoundError:
+        print("Fichier 'data.csv' introuvable.")
+        return 1
     true_price = data['price'].values
     km, price = normalise_data(data)
     
