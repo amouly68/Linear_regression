@@ -11,10 +11,6 @@ def load_scaler(file="scalers.npy"):
     return km_min, km_max, price_min, price_max
 
 
-# def save_scalers(scaler_km, scaler_price, filename="scalers.npy"):
-#     np.save(filename, np.array([scaler_km.data_min_, scaler_km.data_max_, 
-#                                 scaler_price.data_min_, scaler_price.data_max_]))
-
 
 def normalise_data(data):
     scaler_km = MinMaxScaler()
